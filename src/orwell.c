@@ -60,16 +60,19 @@ int ow_read_cores(struct ow_core_list *list, struct ow_buf *buf) {
  */
 int ow_read_memory(struct ow_memory *mem) {
     struct sysinfo info;
+    unsigned long long unit;
 
     int r = sysinfo(&info);
     if (r != 0) {
-        return r;
+        return errno;
     }
 
-    mem->ram_total  = (unsigned long long) info.totalram;
-    mem->ram_free   = (unsigned long long) info.freeram;
-    mem->swap_total = (unsigned long long) info.totalswap;
-    mem->swap_free  = (unsigned long long) info.freeswap;
+    unit = (unsigned long long) info.mem_unit;
+
+    mem->ram_total  = unit * ((unsigned long long) info.totalram);
+    mem->ram_free   = unit * ((unsigned long long) info.freeram);
+    mem->swap_total = unit * ((unsigned long long) info.totalswap);
+    mem->swap_free  = unit * ((unsigned long long) info.freeswap);
 
     return 0;
 }
