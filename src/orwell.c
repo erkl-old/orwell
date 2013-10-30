@@ -71,6 +71,8 @@ int ow_read_memory(struct ow_memory *mem) {
 
     mem->ram_total  = unit * ((unsigned long long) info.totalram);
     mem->ram_free   = unit * ((unsigned long long) info.freeram);
+    mem->ram_shared = unit * ((unsigned long long) info.sharedram);
+    mem->ram_buffer = unit * ((unsigned long long) info.bufferram);
     mem->swap_total = unit * ((unsigned long long) info.totalswap);
     mem->swap_free  = unit * ((unsigned long long) info.freeswap);
 

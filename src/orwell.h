@@ -64,6 +64,8 @@ int ow_read_memory(struct ow_memory *mem);
 struct ow_memory {
     unsigned long long ram_total;
     unsigned long long ram_free;
+    unsigned long long ram_shared;
+    unsigned long long ram_buffer;
     unsigned long long swap_total;
     unsigned long long swap_free;
 };
