@@ -1,12 +1,16 @@
 #ifndef __ORWELL_H
 #define __ORWELL_H
 
+#include <net/if.h>
+
 /*
  * Placeholder struct definitions.
  */
 struct ow_core_list;
 struct ow_core;
 struct ow_memory;
+struct ow_netif_list;
+struct ow_netif;
 
 /*
  * Holds a chunk of scratch space. These buffers let us to delegate
@@ -62,6 +66,46 @@ struct ow_memory {
     unsigned long long ram_free;
     unsigned long long swap_total;
     unsigned long long swap_free;
+};
+
+/*
+ * Copies usage stats for up to netifs->cap network interfaces into the
+ * preallocated array at netifs->interfaces, using the data available in
+ * /proc/net/dev. Also updates netifs->len to reflect how many elements
+ * in netifs->interfaces were updated.
+ *
+ * Returns an appropriate error code on file error. May also return
+ * EOVERFLOW if more than netifs->cap interfaces were found, or if buf
+ * is too small to hold each line in /proc/net/dev.
+ */
+int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf);
+
+struct ow_netif_list {
+    struct ow_netif *interfaces;
+    int len;
+    int cap;
+};
+
+struct ow_netif {
+    char name[IF_NAMESIZE];
+
+    unsigned long long recv_bytes;
+    unsigned long long recv_packets;
+    unsigned long long recv_errs;
+    unsigned long long recv_drop;
+    unsigned long long recv_fifo;
+    unsigned long long recv_frame;
+    unsigned long long recv_compressed;
+    unsigned long long recv_multicast;
+
+    unsigned long long trans_bytes;
+    unsigned long long trans_packets;
+    unsigned long long trans_errs;
+    unsigned long long trans_drop;
+    unsigned long long trans_fifo;
+    unsigned long long trans_colls;
+    unsigned long long trans_carrier;
+    unsigned long long trans_compressed;
 };
 
 #endif

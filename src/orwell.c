@@ -78,6 +78,50 @@ int ow_read_memory(struct ow_memory *mem) {
 }
 
 /*
+ * Updates an ow_netif_list struct with data from /proc/net/dev.
+ */
+int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf) {
+    int ret, n = 0;
+    struct ow_netif *iface;
+
+    FILE *file = fopen("/proc/net/dev", "r");
+    if (file == NULL) {
+        return errno;
+    }
+
+    netifs->len = 0;
+
+    while ((ret = read_line(buf, file)) == 0 && !feof(file)) {
+        /* the first two lines contain no useful information */
+        if (n++ < 2) {
+            continue;
+        }
+
+        if (netifs->len >= netifs->cap) {
+            ret = EOVERFLOW;
+            break;
+        }
+
+        iface = &netifs->interfaces[netifs->len++];
+
+        sscanf(buf->base, " %[^:]: %llu %llu %llu %llu %llu %llu %llu %llu"
+                                 " %llu %llu %llu %llu %llu %llu %llu %llu",
+              iface->name,
+
+              &iface->recv_bytes, &iface->recv_packets, &iface->recv_errs,
+              &iface->recv_drop, &iface->recv_fifo, &iface->recv_frame,
+              &iface->recv_compressed, &iface->recv_multicast,
+
+              &iface->trans_bytes, &iface->trans_packets, &iface->trans_errs,
+              &iface->trans_drop, &iface->trans_fifo, &iface->trans_colls,
+              &iface->trans_carrier, &iface->trans_compressed);
+    }
+
+    fclose(file);
+    return ret;
+}
+
+/*
  * Reads a line from file into buf. Returns an appropriate error code
  * if the operation failed.
  */
