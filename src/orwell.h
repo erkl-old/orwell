@@ -9,6 +9,7 @@
 struct ow_core_list;
 struct ow_core;
 struct ow_memory;
+struct ow_diskutil;
 struct ow_netif_list;
 struct ow_netif;
 
@@ -68,6 +69,19 @@ struct ow_memory {
     unsigned long long ram_buffer;
     unsigned long long swap_total;
     unsigned long long swap_free;
+};
+
+/*
+ * Measures utilization of a particular disk using the statfs(2) system
+ * call, storing the result in an ow_diskutil struct. The path parameter
+ * can be any file within the mounted file system.
+ */
+int ow_read_diskutil(struct ow_diskutil *disk, const char *path);
+
+struct ow_diskutil {
+    unsigned long long capacity;
+    unsigned long long free;
+    unsigned long long available;
 };
 
 /*

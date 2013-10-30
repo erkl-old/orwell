@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <sys/sysinfo.h>
+#include <sys/vfs.h>
 
 #include "orwell.h"
 
@@ -75,6 +76,27 @@ int ow_read_memory(struct ow_memory *mem) {
     mem->ram_buffer = unit * ((unsigned long long) info.bufferram);
     mem->swap_total = unit * ((unsigned long long) info.totalswap);
     mem->swap_free  = unit * ((unsigned long long) info.freeswap);
+
+    return 0;
+}
+
+/*
+ * Updates an ow_diskutil struct with data from statfs(2).
+ */
+int ow_read_diskutil(struct ow_diskutil *disk, const char *path) {
+    struct statfs fs;
+    unsigned long long bsize;
+
+    int r = statfs(path, &fs);
+    if (r != 0) {
+        return errno;
+    }
+
+    bsize = fs.f_bsize;
+
+    disk->capacity   = bsize * ((unsigned long long) fs.f_blocks);
+    disk->free       = bsize * ((unsigned long long) fs.f_bfree);
+    disk->available  = bsize * ((unsigned long long) fs.f_bavail);
 
     return 0;
 }
