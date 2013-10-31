@@ -126,7 +126,7 @@ int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf) {
             break;
         }
 
-        iface = &netifs->interfaces[netifs->len++];
+        iface = &netifs->base[netifs->len++];
 
         sscanf(buf->base, " %[^:]: %llu %llu %llu %llu %llu %llu %llu %llu"
                                  " %llu %llu %llu %llu %llu %llu %llu %llu",

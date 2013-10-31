@@ -90,9 +90,9 @@ struct ow_fs {
 
 /*
  * Copies usage stats for up to netifs->cap network interfaces into the
- * preallocated array at netifs->interfaces, using the data available in
+ * preallocated array at netifs->base, using the data available in
  * /proc/net/dev. Also updates netifs->len to reflect how many elements
- * in netifs->interfaces were updated.
+ * in netifs->base were updated.
  *
  * Returns an appropriate error code on file error. May also return
  * EOVERFLOW if more than netifs->cap interfaces were found, or if buf
@@ -101,7 +101,7 @@ struct ow_fs {
 int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf);
 
 struct ow_netif_list {
-    struct ow_netif *interfaces;
+    struct ow_netif *base;
     int len;
     int cap;
 };
