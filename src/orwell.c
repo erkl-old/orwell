@@ -81,22 +81,22 @@ int ow_read_memory(struct ow_memory *mem) {
 }
 
 /*
- * Updates an ow_diskutil struct with data from statfs(2).
+ * Updates an ow_fs struct with data from statfs(2).
  */
-int ow_read_diskutil(struct ow_diskutil *disk, const char *path) {
-    struct statfs fs;
+int ow_read_fsutil(struct ow_fs *fs) {
+    struct statfs stat;
     unsigned long long bsize;
 
-    int r = statfs(path, &fs);
+    int r = statfs(fs->root, &stat);
     if (r != 0) {
         return errno;
     }
 
-    bsize = fs.f_bsize;
+    bsize = stat.f_bsize;
 
-    disk->capacity   = bsize * ((unsigned long long) fs.f_blocks);
-    disk->free       = bsize * ((unsigned long long) fs.f_bfree);
-    disk->available  = bsize * ((unsigned long long) fs.f_bavail);
+    fs->capacity   = bsize * ((unsigned long long) stat.f_blocks);
+    fs->free       = bsize * ((unsigned long long) stat.f_bfree);
+    fs->available  = bsize * ((unsigned long long) stat.f_bavail);
 
     return 0;
 }

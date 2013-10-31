@@ -9,7 +9,7 @@
 struct ow_core_list;
 struct ow_core;
 struct ow_memory;
-struct ow_diskutil;
+struct ow_fs;
 struct ow_netif_list;
 struct ow_netif;
 
@@ -76,9 +76,13 @@ struct ow_memory {
  * call, storing the result in an ow_diskutil struct. The path parameter
  * can be any file within the mounted file system.
  */
-int ow_read_diskutil(struct ow_diskutil *disk, const char *path);
+int ow_read_fsutil(struct ow_fs *fs);
 
-struct ow_diskutil {
+struct ow_fs {
+    const char *root;
+    const char *device;
+    const char *type;
+
     unsigned long long capacity;
     unsigned long long free;
     unsigned long long available;
