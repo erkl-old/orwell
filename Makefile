@@ -1,6 +1,6 @@
 AR = ar
 CC = gcc
-CFLAGS = -O2 -Wall -ansi
+CFLAGS = -O2 -Wall
 
 OBJS = src/orwell.o
 
