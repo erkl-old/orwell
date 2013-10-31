@@ -6,11 +6,7 @@
 #include <sys/vfs.h>
 
 #include "orwell.h"
-
-/*
- * Utility function prototypes.
- */
-static int read_line(struct ow_buf *buf, FILE *f);
+#include "orwell-util.h"
 
 /*
  * Updates an ow_core_list struct with data from /proc/stat.
@@ -26,7 +22,7 @@ int ow_read_cores(struct ow_core_list *list, struct ow_buf *buf) {
 
     list->len = 0;
 
-    while ((ret = read_line(buf, file)) == 0 && !feof(file)) {
+    while ((ret = ow__readln(file, buf->base, buf->len)) == 0 && !feof(file)) {
         /* we're only interested in lines beginning with "cpu[0-9]" */
         if (strlen(buf->base) < 4 || buf->base[0] != 'c' ||
             buf->base[1] != 'p' || buf->base[2] != 'u' ||
@@ -115,7 +111,7 @@ int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf) {
 
     netifs->len = 0;
 
-    while ((ret = read_line(buf, file)) == 0 && !feof(file)) {
+    while ((ret = ow__readln(file, buf->base, buf->len)) == 0 && !feof(file)) {
         /* the first two lines contain no useful information */
         if (n++ < 2) {
             continue;
@@ -143,27 +139,4 @@ int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf) {
 
     fclose(file);
     return ret;
-}
-
-/*
- * Reads a line from file into buf. Returns an appropriate error code
- * if the operation failed.
- */
-static int read_line(struct ow_buf *buf, FILE *file) {
-    int i;
-
-    if (fgets(buf->base, buf->len, file) == NULL) {
-        return errno;
-    }
-
-    for (i = 0; ; i++) {
-        if (i >= buf->len - 1) {
-            return EOVERFLOW;
-        }
-        if (buf->base[i] == '\n') {
-            break;
-        }
-    }
-
-    return 0;
 }
