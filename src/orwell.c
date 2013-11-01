@@ -90,9 +90,9 @@ int ow_read_fsutil(struct ow_fs *fs) {
 
     bsize = stat.f_bsize;
 
-    fs->capacity   = bsize * ((unsigned long long) stat.f_blocks);
-    fs->free       = bsize * ((unsigned long long) stat.f_bfree);
-    fs->available  = bsize * ((unsigned long long) stat.f_bavail);
+    fs->capacity  = bsize * ((unsigned long long) stat.f_blocks);
+    fs->free      = bsize * ((unsigned long long) stat.f_bfree);
+    fs->available = bsize * ((unsigned long long) stat.f_bavail);
 
     return 0;
 }
@@ -126,15 +126,15 @@ int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf) {
 
         sscanf(buf->base, " %[^:]: %llu %llu %llu %llu %llu %llu %llu %llu"
                                  " %llu %llu %llu %llu %llu %llu %llu %llu",
-              iface->name,
+               iface->name,
 
-              &iface->recv_bytes, &iface->recv_packets, &iface->recv_errs,
-              &iface->recv_drop, &iface->recv_fifo, &iface->recv_frame,
-              &iface->recv_compressed, &iface->recv_multicast,
+               &iface->recv_bytes, &iface->recv_packets, &iface->recv_errs,
+               &iface->recv_drop, &iface->recv_fifo, &iface->recv_frame,
+               &iface->recv_compressed, &iface->recv_multicast,
 
-              &iface->trans_bytes, &iface->trans_packets, &iface->trans_errs,
-              &iface->trans_drop, &iface->trans_fifo, &iface->trans_colls,
-              &iface->trans_carrier, &iface->trans_compressed);
+               &iface->trans_bytes, &iface->trans_packets, &iface->trans_errs,
+               &iface->trans_drop, &iface->trans_fifo, &iface->trans_colls,
+               &iface->trans_carrier, &iface->trans_compressed);
     }
 
     fclose(file);
