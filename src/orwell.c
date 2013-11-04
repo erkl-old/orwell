@@ -9,9 +9,9 @@
 #include "orwell-util.h"
 
 /*
- * Updates an `ow_core_list` struct with data from `/proc/stat`.
+ * Updates `ow_core` entries in `list` with data from `/proc/stat`.
  */
-int ow_read_cores(struct ow_core_list *list, struct ow_buf *buf) {
+int ow_read_cores(struct ow_list *list, struct ow_buf *buf) {
     int ret = 0;
 
     /* always reset the list's length */
@@ -37,7 +37,7 @@ int ow_read_cores(struct ow_core_list *list, struct ow_buf *buf) {
         }
 
         /* append the core to the list */
-        struct ow_core *core = &list->base[list->len++];
+        struct ow_core *core = &((struct ow_core *) list->base)[list->len++];
 
         /* different kernel versions will include different numbers of fields,
          * but luckily `sscanf` will set all missing fields to 0 for us */
@@ -100,13 +100,14 @@ int ow_read_fsutil(struct ow_fs *fs) {
 }
 
 /*
- * Updates an `ow_netif_list` struct with data from `/proc/net/dev`.
+ * Updates the preallocated `ow_netif` array stored in `list->base` with
+ * data from `/proc/net/dev`.
  */
-int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf) {
+int ow_read_netifs(struct ow_list *list, struct ow_buf *buf) {
     int ret = 0;
 
     /* the list's `len` property should always be zeroed */
-    netifs->len = 0;
+    list->len = 0;
 
     FILE *file = fopen("/proc/net/dev", "r");
     if (file == NULL) {
@@ -122,14 +123,14 @@ int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf) {
             continue;
         }
 
-        if (netifs->len >= netifs->cap) {
+        if (list->len >= list->cap) {
             ret = EOVERFLOW;
             break;
         }
 
         /* create a new network interface entry (luckily `sscanf` does all the
          * heavy lifting for us) */
-        struct ow_netif *iface = &netifs->base[netifs->len++];
+        struct ow_netif *iface = &((struct ow_netif *) list->base)[list->len++];
 
         sscanf(buf->base, " %[^:]: %llu %llu %llu %llu %llu %llu %llu %llu"
                                  " %llu %llu %llu %llu %llu %llu %llu %llu",

@@ -6,11 +6,9 @@
 /*
  * Placeholder struct definitions.
  */
-struct ow_core_list;
 struct ow_core;
 struct ow_memory;
 struct ow_fs;
-struct ow_netif_list;
 struct ow_netif;
 
 /*
@@ -23,9 +21,19 @@ struct ow_buf {
 };
 
 /*
+ * Generic list struct, describing the array at `base`; `len` holds the number
+ * of elements currently in the array, and `cap` the array's total capacity.
+ */
+struct ow_list {
+    void *base;
+    int len;
+    int cap;
+};
+
+/*
  * Reads usage statistics for all cores (measured in jiffies) from `/proc/stat`.
- * The result is stored in a preallocated `ow_core_list` struct, the `len`
- * property of which will be updated to reflect the number of cores found.
+ * The result is stored in the preallocated `ow_core` array at `list->base`, and
+ * `list->len` property will be updated to reflect the number of cores found.
  *
  * If there are statistics for more CPU cores than there are elements in
  * `list->base` (the length of which must be indicated by `list->cap`),
@@ -35,13 +43,7 @@ struct ow_buf {
  * Additionally, `ow_read_cores` will return EOVERFLOW if any line in
  * `/proc/stat` is too long to fit into `buf`.
  */
-int ow_read_cores(struct ow_core_list *list, struct ow_buf *buf);
-
-struct ow_core_list {
-    struct ow_core *base;
-    int len;
-    int cap;
-};
+int ow_read_cores(struct ow_list *list, struct ow_buf *buf);
 
 struct ow_core {
     unsigned long long total;
@@ -88,22 +90,16 @@ struct ow_fs {
 };
 
 /*
- * Copies usage stats for up to `netifs->cap` network interfaces into the
- * preallocated array at `netifs->base`, using the data available in
- * `/proc/net/dev`. Also updates `netifs->len` to reflect how many elements
- * in `netifs->base` were updated.
+ * Copies usage stats for up to `list->cap` network interfaces into the
+ * preallocated `ow_netif` array at `list->base`, using the data available in
+ * `/proc/net/dev`. Also updates `list->len` to reflect how many elements
+ * in `list->base` were updated.
  *
  * Returns an appropriate error code on file error. May also return
- * EOVERFLOW if more than `netifs->cap` interfaces were found, or if `buf`
+ * EOVERFLOW if more than `list->cap` interfaces were found, or if `buf`
  * is too small to hold each line in `/proc/net/dev`.
  */
-int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf);
-
-struct ow_netif_list {
-    struct ow_netif *base;
-    int len;
-    int cap;
-};
+int ow_read_netifs(struct ow_list *list, struct ow_buf *buf);
 
 struct ow_netif {
     char name[IF_NAMESIZE];
