@@ -74,6 +74,13 @@ struct ow_memory {
 };
 
 /*
+ * Populates `list->base` with an `ow_fs` entry for each known mounted,
+ * physical filesystem, up to a maximum of `list->cap` filesystems. Updates
+ * `list->len` to reflect the number of filesystems found.
+ */
+int ow_read_filesystems(struct ow_list *list, const struct ow_buf *buf);
+
+/*
  * Updates the utilization fields of the provided `ow_fs` struct, using the
  * `statfs(2)` system call.
  */

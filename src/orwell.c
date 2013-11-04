@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <mntent.h>
 #include <sys/sysinfo.h>
 #include <sys/vfs.h>
 
@@ -80,7 +81,106 @@ int ow_read_memory(struct ow_memory *mem) {
 }
 
 /*
- * Updates an `ow_fs` struct with data from `statfs(2)`.
+ * Populates the `ow_fs` array at `list->base` with an entry for each mounted,
+ * physical filesystem identified. Filesystems are listed as they appear in
+ * `/proc/mounts`.
+ */
+int ow_read_filesystems(struct ow_list *list, const struct ow_buf *buf) {
+    int ret = 0;
+
+    /* update the list's length before doing anything else */
+    list->len = 0;
+
+    /* tail points to the embedded string array we store inside `buf`, and
+     * `len` holds the number of bytes available */
+    char *tail = buf->base;
+    size_t len = buf->len;
+
+    /* our first order of business is to compile a list of filesystem
+     * types associated with a physical, mounted device */
+    FILE *file = fopen("/proc/filesystems", "r");
+    if (file == NULL) {
+        return errno;
+    }
+
+    while ((ret = ow__readln(file, tail, len)) == 0 && !feof(file)) {
+        if (tail[0] == '\t') {
+            /* the lines that make it through look something like this:
+             * "\text4\n\0", but we're not interested in the leading tab or
+             * the trailing newline */
+            size_t num = strlen(tail) - 1;
+            tail[num] = '\0';
+
+            /* add this filesystem type to array; abort if there's not
+             * enough room */
+            if ((ret = ow__strpush(&tail, &len, tail+1)) != 0) {
+                break;
+            }
+        }
+    }
+
+    fclose(file);
+
+    if (ret != 0) {
+        return ret;
+    }
+
+    /* now we work our way through `/proc/mounts`, cross-referencing each
+     * entry's filesystem type with the embedded array we just compiled */
+    file = setmntent("/proc/mounts", "r");
+    if (file == NULL) {
+        return errno;
+    }
+
+    /* because we want to forward the writable portion of the buffer without
+     * making the list of filesystem type names any longer, we have to create
+     * another pointer */
+    char *off = tail;
+
+    struct mntent mnt;
+
+    while (getmntent_r(file, &mnt, off, len) != NULL) {
+        if (list->len >= list->cap) {
+            ret = EOVERFLOW;
+            break;
+        }
+
+        /* ignore entries for filesystem types which aren't associated
+         * with any physical device */
+        const char *type = ow__strfind(buf->base, tail, mnt.mnt_type);
+        if (type == NULL) {
+            continue;
+        }
+
+        /* append this filesystem to the list */
+        struct ow_fs *fs = &((struct ow_fs *) list->base)[list->len++];
+
+        fs->root      = mnt.mnt_dir;
+        fs->device    = mnt.mnt_fsname;
+        fs->type      = type;
+        fs->capacity  = 0;
+        fs->free      = 0;
+        fs->available = 0;
+
+        /* advance our buffer pointer so that subsequent calls to `getmntent_r`
+         * won't overwrite the last entry's `root` and `device` properties,
+         * which we keep in the user-provided buffer */
+        size_t num = (mnt.mnt_dir + strlen(mnt.mnt_dir) + 1) - off;
+        off += num;
+        len -= num;
+    }
+
+    if (ferror(file)) {
+        return errno;
+    }
+
+    endmntent(file);
+    return ret;
+}
+
+/*
+ * Updates an `ow_fs` struct with space utilization stats, taken
+ * from `statfs(2)`.
  */
 int ow_read_fsutil(struct ow_fs *fs) {
     struct statfs stat;
