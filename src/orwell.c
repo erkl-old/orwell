@@ -9,21 +9,22 @@
 #include "orwell-util.h"
 
 /*
- * Updates an ow_core_list struct with data from /proc/stat.
+ * Updates an `ow_core_list` struct with data from `/proc/stat`.
  */
 int ow_read_cores(struct ow_core_list *list, struct ow_buf *buf) {
-    int ret;
-    struct ow_core *core;
+    int ret = 0;
+
+    /* always reset the list's length */
+    list->len = 0;
 
     FILE *file = fopen("/proc/stat", "r");
     if (file == NULL) {
         return errno;
     }
 
-    list->len = 0;
-
     while ((ret = ow__readln(file, buf->base, buf->len)) == 0 && !feof(file)) {
-        /* we're only interested in lines beginning with "cpu[0-9]" */
+        /* while `proc/stat` contains all kinds of stats, we're only interested
+         * in lines beginning with "cpu" and a decimal digit */
         if (strlen(buf->base) < 4 || buf->base[0] != 'c' ||
             buf->base[1] != 'p' || buf->base[2] != 'u' ||
             buf->base[3] < '0' || buf->base[3] > '9') {
@@ -35,12 +36,15 @@ int ow_read_cores(struct ow_core_list *list, struct ow_buf *buf) {
             break;
         }
 
-        core = &list->base[list->len++];
+        /* append the core to the list */
+        struct ow_core *core = &list->base[list->len++];
 
+        /* different kernel versions will include different numbers of fields,
+         * but luckily `sscanf` will set all missing fields to 0 for us */
         sscanf(buf->base, "%*s %llu %llu %llu %llu %llu %llu %llu %llu %llu",
-            &core->user, &core->nice, &core->system,
-            &core->idle, &core->iowait, &core->irq,
-            &core->softirq, &core->steal, &core->virt);
+               &core->user, &core->nice, &core->system,
+               &core->idle, &core->iowait, &core->irq,
+               &core->softirq, &core->steal, &core->virt);
 
         core->total =
             core->user + core->nice + core->system +
@@ -53,18 +57,17 @@ int ow_read_cores(struct ow_core_list *list, struct ow_buf *buf) {
 }
 
 /*
- * Updates an ow_memory struct with data from sysinfo(2).
+ * Updates an `ow_memory` struct with data from `sysinfo(2)`.
  */
 int ow_read_memory(struct ow_memory *mem) {
     struct sysinfo info;
-    unsigned long long unit;
-
     int r = sysinfo(&info);
     if (r != 0) {
         return errno;
     }
 
-    unit = (unsigned long long) info.mem_unit;
+    /* convert each measurement to bytes */
+    unsigned long long unit = (unsigned long long) info.mem_unit;
 
     mem->ram_total  = unit * ((unsigned long long) info.totalram);
     mem->ram_free   = unit * ((unsigned long long) info.freeram);
@@ -77,18 +80,17 @@ int ow_read_memory(struct ow_memory *mem) {
 }
 
 /*
- * Updates an ow_fs struct with data from statfs(2).
+ * Updates an `ow_fs` struct with data from `statfs(2)`.
  */
 int ow_read_fsutil(struct ow_fs *fs) {
     struct statfs stat;
-    unsigned long long bsize;
-
     int r = statfs(fs->root, &stat);
     if (r != 0) {
         return errno;
     }
 
-    bsize = stat.f_bsize;
+    /* convert the measurements from blocks to bytes */
+    unsigned long long bsize = (unsigned long long) stat.f_bsize;
 
     fs->capacity  = bsize * ((unsigned long long) stat.f_blocks);
     fs->free      = bsize * ((unsigned long long) stat.f_bfree);
@@ -98,21 +100,24 @@ int ow_read_fsutil(struct ow_fs *fs) {
 }
 
 /*
- * Updates an ow_netif_list struct with data from /proc/net/dev.
+ * Updates an `ow_netif_list` struct with data from `/proc/net/dev`.
  */
 int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf) {
-    int ret, n = 0;
-    struct ow_netif *iface;
+    int ret = 0;
+
+    /* the list's `len` property should always be zeroed */
+    netifs->len = 0;
 
     FILE *file = fopen("/proc/net/dev", "r");
     if (file == NULL) {
         return errno;
     }
 
-    netifs->len = 0;
+    int n = 0;
 
     while ((ret = ow__readln(file, buf->base, buf->len)) == 0 && !feof(file)) {
-        /* the first two lines contain no useful information */
+        /* the first two rows contain no useful data; only
+         * table headers */
         if (n++ < 2) {
             continue;
         }
@@ -122,7 +127,9 @@ int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf) {
             break;
         }
 
-        iface = &netifs->base[netifs->len++];
+        /* create a new network interface entry (luckily `sscanf` does all the
+         * heavy lifting for us) */
+        struct ow_netif *iface = &netifs->base[netifs->len++];
 
         sscanf(buf->base, " %[^:]: %llu %llu %llu %llu %llu %llu %llu %llu"
                                  " %llu %llu %llu %llu %llu %llu %llu %llu",

@@ -4,7 +4,8 @@
 #include "orwell-util.h"
 
 /*
- * Reads a line from file into buf.
+ * Reads a line from `file` into `buf`. Returns IO-related errors, or
+ * EOVERFLOW if the next line is more than `len` bytes long.
  */
 int ow__readln(FILE *file, char *buf, size_t len) {
     int i;

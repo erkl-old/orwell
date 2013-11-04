@@ -23,17 +23,17 @@ struct ow_buf {
 };
 
 /*
- * Reads usage statistics for all cores (measured in jiffies) from /proc/stat.
- * The result is stored in a preallocated ow_core_list struct, the len property
- * of which will be updated to reflect the number of cores found.
+ * Reads usage statistics for all cores (measured in jiffies) from `/proc/stat`.
+ * The result is stored in a preallocated `ow_core_list` struct, the `len`
+ * property of which will be updated to reflect the number of cores found.
  *
- * If there are statistics for more CPU cores than there are elements
- * in list->base (the length of which must be indicated by list->cap),
- * ow_read_cores updates as many elements of the list->base array as possible
- * before returning EOVERFLOW.
+ * If there are statistics for more CPU cores than there are elements in
+ * `list->base` (the length of which must be indicated by `list->cap`),
+ * `ow_read_cores` updates as many elements of the `list->base` array as
+ * possible before returning EOVERFLOW.
  *
- * Additionally, ow_read_cores will return EOVERFLOW if any line in /proc/stat
- * is too long to fit into buf.
+ * Additionally, `ow_read_cores` will return EOVERFLOW if any line in
+ * `/proc/stat` is too long to fit into `buf`.
  */
 int ow_read_cores(struct ow_core_list *list, struct ow_buf *buf);
 
@@ -57,7 +57,7 @@ struct ow_core {
 };
 
 /*
- * Snapshots current memory usage statistics using the sysinfo(2)
+ * Snapshots current memory usage statistics using the `sysinfo(2)`
  * system call.
  */
 int ow_read_memory(struct ow_memory *mem);
@@ -72,9 +72,8 @@ struct ow_memory {
 };
 
 /*
- * Measures utilization of a particular disk using the statfs(2) system
- * call, storing the result in an ow_diskutil struct. The path parameter
- * can be any file within the mounted file system.
+ * Updates the utilization fields of the provided `ow_fs` struct, using the
+ * `statfs(2)` system call.
  */
 int ow_read_fsutil(struct ow_fs *fs);
 
@@ -89,14 +88,14 @@ struct ow_fs {
 };
 
 /*
- * Copies usage stats for up to netifs->cap network interfaces into the
- * preallocated array at netifs->base, using the data available in
- * /proc/net/dev. Also updates netifs->len to reflect how many elements
- * in netifs->base were updated.
+ * Copies usage stats for up to `netifs->cap` network interfaces into the
+ * preallocated array at `netifs->base`, using the data available in
+ * `/proc/net/dev`. Also updates `netifs->len` to reflect how many elements
+ * in `netifs->base` were updated.
  *
  * Returns an appropriate error code on file error. May also return
- * EOVERFLOW if more than netifs->cap interfaces were found, or if buf
- * is too small to hold each line in /proc/net/dev.
+ * EOVERFLOW if more than `netifs->cap` interfaces were found, or if `buf`
+ * is too small to hold each line in `/proc/net/dev`.
  */
 int ow_read_netifs(struct ow_netif_list *netifs, struct ow_buf *buf);
 
