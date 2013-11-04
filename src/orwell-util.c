@@ -26,47 +26,47 @@ int ow__readln(FILE *file, char *buf, size_t len) {
 }
 
 /*
- * Appends a copy of s to the end of the chain.
+ * Appends a copy of s to the end of the string list, provided
+ * `strlen(src) + 1 < cap` is true. The `tail` and `cap` pointers
+ * will be updated accordingly if the operation succeeds.
  */
-int ow__chain_add(struct ow__chain *ch, const char *s) {
-    size_t index = 0;
-    size_t limit = ch->boundary - ch->tail;
+int ow__strpush(char **tail, size_t *cap, const char *src) {
+    size_t i = 0;
     unsigned char c;
 
     do {
-        if (index >= limit) {
+        if (i >= *cap) {
             return EOVERFLOW;
         }
 
-        ch->tail[index] = (c = s[index]);
-        index++;
+        c = src[i];
+        (*tail)[i++] = c;
     } while (c != '\0');
 
-    ch->tail += index;
+    *tail += i;
+    *cap -= i;
+
     return 0;
 }
 
 /*
- * Searches the chain for needle, returning the position of the
- * matching entry if found.
+ * Searches the list between `head` and `tail` for `needle`, returning the
+ * position of the matching entry if found.
  */
-char *ow__chain_find(struct ow__chain *ch, const char *needle) {
-    char *curr = ch->head;
+const char *ow__strfind(const char *head, const char *tail, const char *needle) {
     size_t i;
 
-    while (curr < ch->tail) {
+    for (; head < tail; head += i) {
         for (i = 0; ; i++) {
-            if (curr[i] != needle[i]) {
-                while (curr[i++] != '\0');
+            if (head[i] != needle[i]) {
+                while (head[i++] != '\0');
                 break;
             }
 
             if (needle[i] == '\0') {
-                return curr;
+                return head;
             }
         }
-
-        curr += i;
     }
 
     return NULL;

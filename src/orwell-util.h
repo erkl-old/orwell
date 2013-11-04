@@ -10,16 +10,19 @@
 int ow__readln(FILE *file, char *buf, size_t len);
 
 /*
- * A chain is a bounded sequence of NULL-terminated strings. It allows
- * us to store an array of strings inside a user-provided buffers.
+ * These functions manage lists of NULL-terminated strings, stored using a
+ * limited amount of memory. They allow us to manage lists of strings inside
+ * user-provided
+ *
+ * The `head` and `tail` pointers, and the `cap` value, relate to each other
+ * the following way (illustrated here as a list containing the strings "foo"
+ * and "bar"):
+ *
+ *     "foo\0bar\0<unused space>"
+ *      ^         ^             ^
+ *    head       tail      tail + cap
  */
-struct ow__chain {
-    char *head;
-    char *tail;
-    char *boundary;
-};
-
-int ow__chain_add(struct ow__chain *chain, const char *s);
-char *ow__chain_find(struct ow__chain *chain, const char *needle);
+int ow__strpush(char **tail, size_t *cap, const char *s);
+const char *ow__strfind(const char *head, const char *tail, const char *needle);
 
 #endif
