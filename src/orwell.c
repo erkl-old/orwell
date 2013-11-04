@@ -12,7 +12,7 @@
 /*
  * Updates `ow_core` entries in `list` with data from `/proc/stat`.
  */
-int ow_read_cores(struct ow_list *list, struct ow_buf *buf) {
+int ow_read_cores(struct ow_list *list, const struct ow_buf *buf) {
     int ret = 0;
 
     /* always reset the list's length */
@@ -203,7 +203,7 @@ int ow_read_fsutil(struct ow_fs *fs) {
  * Updates the preallocated `ow_netif` array stored in `list->base` with
  * data from `/proc/net/dev`.
  */
-int ow_read_netifs(struct ow_list *list, struct ow_buf *buf) {
+int ow_read_netifs(struct ow_list *list, const struct ow_buf *buf) {
     int ret = 0;
 
     /* the list's `len` property should always be zeroed */

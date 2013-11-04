@@ -43,7 +43,7 @@ struct ow_list {
  * Additionally, `ow_read_cores` will return EOVERFLOW if any line in
  * `/proc/stat` is too long to fit into `buf`.
  */
-int ow_read_cores(struct ow_list *list, struct ow_buf *buf);
+int ow_read_cores(struct ow_list *list, const struct ow_buf *buf);
 
 struct ow_core {
     unsigned long long total;
@@ -106,7 +106,7 @@ struct ow_fs {
  * EOVERFLOW if more than `list->cap` interfaces were found, or if `buf`
  * is too small to hold each line in `/proc/net/dev`.
  */
-int ow_read_netifs(struct ow_list *list, struct ow_buf *buf);
+int ow_read_netifs(struct ow_list *list, const struct ow_buf *buf);
 
 struct ow_netif {
     char name[IF_NAMESIZE];
