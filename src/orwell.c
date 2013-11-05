@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <mntent.h>
+#include <sys/stat.h>
 #include <sys/sysinfo.h>
 #include <sys/vfs.h>
 
@@ -147,22 +148,33 @@ int ow_read_filesystems(struct ow_list *list, char *buf, size_t len) {
             continue;
         }
 
+        /* move `mnt.mnt_dir` to the start of the buffer */
+        size_t n = strlen(mnt.mnt_dir) + 1;
+        memcpy(buf, mnt.mnt_dir, n);
+
+        /* use `stat(2)` to detect the device's major and minor numbers */
+        struct stat st;
+        if (stat(buf, &st) != 0) {
+            ret = errno;
+            break;
+        }
+
         /* append this filesystem to the list */
         struct ow_fs *fs = &((struct ow_fs *) list->base)[list->len++];
 
-        fs->root      = mnt.mnt_dir;
-        fs->device    = mnt.mnt_fsname;
-        fs->type      = type;
+        fs->device = st.st_dev;
+        fs->root   = buf;
+        fs->type   = type;
+
         fs->capacity  = 0;
         fs->free      = 0;
         fs->available = 0;
 
         /* advance our buffer pointer so that subsequent calls to `getmntent_r`
-         * won't overwrite the last entry's `root` and `device` properties,
-         * which we keep in the user-provided buffer */
-        size_t num = (mnt.mnt_dir + strlen(mnt.mnt_dir) + 1) - buf;
-        buf += num;
-        len -= num;
+         * won't overwrite the last entry's `root` property, which we keep in
+         * the user-provided buffer */
+        buf += n;
+        len -= n;
     }
 
     if (ferror(file)) {

@@ -78,8 +78,8 @@ int ow_read_filesystems(struct ow_list *list, char *buf, size_t len);
 int ow_read_fsutil(struct ow_fs *fs);
 
 struct ow_fs {
+    dev_t device;
     const char *root;
-    const char *device;
     const char *type;
 
     unsigned long long capacity;
