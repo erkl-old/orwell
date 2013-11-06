@@ -84,7 +84,7 @@ int ow_read_memory(struct ow_memory *mem) {
  * physical filesystem identified. Filesystems are listed as they appear in
  * `/proc/mounts`.
  */
-int ow_read_filesystems(struct ow_list *list, char *buf, size_t len) {
+int ow_read_mounts(struct ow_list *list, char *buf, size_t len) {
     int ret = 0;
 
     /* update the list's length before doing anything else */
