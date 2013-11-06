@@ -47,10 +47,9 @@ int ow_read_cores(struct ow_list *list, char *buf, size_t len) {
                &core->idle, &core->iowait, &core->irq,
                &core->softirq, &core->steal, &core->virt);
 
-        core->total =
-            core->user + core->nice + core->system +
-            core->idle + core->iowait + core->irq +
-            core->softirq + core->steal + core->virt;
+        core->total = core->user + core->nice + core->system +
+                      core->idle + core->iowait + core->irq +
+                      core->softirq + core->steal + core->virt;
     }
 
     fclose(file);
@@ -191,18 +190,18 @@ int ow_read_filesystems(struct ow_list *list, char *buf, size_t len) {
  * from `statfs(2)`.
  */
 int ow_read_fsutil(struct ow_fs *fs) {
-    struct statfs stat;
-    int r = statfs(fs->root, &stat);
+    struct statfs st;
+    int r = statfs(fs->root, &st);
     if (r != 0) {
         return errno;
     }
 
     /* convert the measurements from blocks to bytes */
-    unsigned long long bsize = (unsigned long long) stat.f_bsize;
+    unsigned long long bsize = (unsigned long long) st.f_bsize;
 
-    fs->capacity  = bsize * ((unsigned long long) stat.f_blocks);
-    fs->free      = bsize * ((unsigned long long) stat.f_bfree);
-    fs->available = bsize * ((unsigned long long) stat.f_bavail);
+    fs->capacity  = bsize * ((unsigned long long) st.f_blocks);
+    fs->free      = bsize * ((unsigned long long) st.f_bfree);
+    fs->available = bsize * ((unsigned long long) st.f_bavail);
 
     return 0;
 }

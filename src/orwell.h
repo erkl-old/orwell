@@ -22,9 +22,10 @@ struct ow_list {
 };
 
 /*
- * Reads usage statistics for all cores (measured in jiffies) from `/proc/stat`.
- * The result is stored in the preallocated `ow_core` array at `list->base`, and
- * `list->len` property will be updated to reflect the number of cores found.
+ * Reads usage statistics for all cores (measured in jiffies) from
+ * `/proc/stat`. The result is stored in the preallocated `ow_core` array
+ * at `list->base`, and `list->len` property will be updated to reflect
+ * the number of cores found.
  *
  * If there are statistics for more CPU cores than there are elements in
  * `list->base` (the length of which must be indicated by `list->cap`),
