@@ -1,11 +1,39 @@
 #ifndef __ORWELL_H
 #define __ORWELL_H
 
+#include <inttypes.h>
 #include <net/if.h>
 
 /*
- * Utilization statistics for a single CPU core.
+ * Struct prototypes.
  */
+struct ow_memory;
+struct ow_core;
+struct ow_fs;
+struct ow_netif;
+
+/*
+ * Copies current memory utilization statistics to the provided struct.
+ * Returns a negated error code on error.
+ */
+int ow_read_memory(struct ow_memory *mem);
+
+struct ow_memory {
+    unsigned long long ram_total;
+    unsigned long long ram_free;
+    unsigned long long ram_shared;
+    unsigned long long ram_buffer;
+    unsigned long long swap_total;
+    unsigned long long swap_free;
+};
+
+/*
+ * Updates up to `cap` entries in the `dst` array with current values of all
+ * available jiffy counters per core. Returns the number of cores found, or
+ * a negated error code.
+ */
+int ow_read_cores(struct ow_core *dst, int cap, char *buf, size_t len);
+
 struct ow_core {
     unsigned long long total;
     unsigned long long user;
@@ -20,21 +48,13 @@ struct ow_core {
 };
 
 /*
- * Memory usage statistics.
+ * Finds up to `cap` mounted, physical filesystems, and writes their basic
+ * information as well as current capacity and I/O metrics to entries in the
+ * `dst` array. Returns the number of filesystems found, or a negated error
+ * code.
  */
-struct ow_memory {
-    unsigned long long ram_total;
-    unsigned long long ram_free;
-    unsigned long long ram_shared;
-    unsigned long long ram_buffer;
-    unsigned long long swap_total;
-    unsigned long long swap_free;
-};
+int ow_read_mounts(struct ow_fs *dst, int cap, char *buf, size_t len);
 
-/*
- * Filesystem information, including current utilization levels and counters
- * for the total number of bytes read from and written to the device.
- */
 struct ow_fs {
     dev_t device;
     const char *root;
@@ -49,8 +69,12 @@ struct ow_fs {
 };
 
 /*
- * Network interface metrics.
+ * Fetches the name and usage metrics for up to `cap` network interfaces,
+ * storing the data in the `dst` array. Returns the number of network
+ * interfaces identified, or a negated error code.
  */
+int ow_read_netifs(struct ow_netif *dst, int cap, char *buf, size_t len);
+
 struct ow_netif {
     char name[IF_NAMESIZE];
 
@@ -72,58 +96,5 @@ struct ow_netif {
     unsigned long long trans_carrier;
     unsigned long long trans_compressed;
 };
-
-/*
- * Reads usage statistics for all cores (measured in jiffies) from
- * `/proc/stat`. The result is stored in the preallocated `ow_core` array
- * at `list->base`, and `list->len` property will be updated to reflect
- * the number of cores found.
- *
- * If there are statistics for more CPU cores than there are elements in
- * `list->base` (the length of which must be indicated by `list->cap`),
- * `ow_read_cores` updates as many elements of the `list->base` array as
- * possible before returning EOVERFLOW.
- *
- * Additionally, `ow_read_cores` will return EOVERFLOW if any line in
- * `/proc/stat` is too long to fit into `buf`.
- */
-int ow_read_cores(struct ow_core *dst, int cap, char *buf, size_t len);
-
-/*
- * Snapshots current memory usage statistics using the `sysinfo(2)`
- * system call.
- */
-int ow_read_memory(struct ow_memory *mem);
-
-/*
- * Populates `list->base` with an `ow_fs` entry for each known mounted,
- * physical filesystem, up to a maximum of `list->cap` filesystems. Updates
- * `list->len` to reflect the number of filesystems found.
- */
-int ow_read_mounts(struct ow_fs *dst, int cap, char *buf, size_t len);
-
-/*
- * Updates the utilization fields of the provided `ow_fs` struct, using the
- * `statfs(2)` system call.
- */
-int ow_read_fsutil(struct ow_fs *fs);
-
-/*
- * Updates the filesystem's `read` and `written` properties with figures
- * from `/proc/diskstats`.
- */
-int ow_read_fsio(struct ow_fs *fs, char *buf, size_t len);
-
-/*
- * Copies usage stats for up to `list->cap` network interfaces into the
- * preallocated `ow_netif` array at `list->base`, using the data available in
- * `/proc/net/dev`. Also updates `list->len` to reflect how many elements
- * in `list->base` were updated.
- *
- * Returns an appropriate error code on file error. May also return
- * EOVERFLOW if more than `list->cap` interfaces were found, or if `buf`
- * is too small to hold each line in `/proc/net/dev`.
- */
-int ow_read_netifs(struct ow_netif *dst, int cap, char *buf, size_t len);
 
 #endif
