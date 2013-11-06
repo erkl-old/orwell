@@ -162,13 +162,14 @@ int ow_read_filesystems(struct ow_list *list, char *buf, size_t len) {
         /* append this filesystem to the list */
         struct ow_fs *fs = &((struct ow_fs *) list->base)[list->len++];
 
-        fs->device = st.st_dev;
-        fs->root   = buf;
-        fs->type   = type;
-
+        fs->device    = st.st_dev;
+        fs->root      = buf;
+        fs->type      = type;
         fs->capacity  = 0;
         fs->free      = 0;
         fs->available = 0;
+        fs->read      = 0;
+        fs->written   = 0;
 
         /* advance our buffer pointer so that subsequent calls to `getmntent_r`
          * won't overwrite the last entry's `root` property, which we keep in
