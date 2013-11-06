@@ -77,6 +77,12 @@ int ow_read_filesystems(struct ow_list *list, char *buf, size_t len);
  */
 int ow_read_fsutil(struct ow_fs *fs);
 
+/*
+ * Updates the filesystem's `read` and `written` properties with figures
+ * from `/proc/diskstats`.
+ */
+int ow_read_fsio(struct ow_fs *fs, char *buf, size_t len);
+
 struct ow_fs {
     dev_t device;
     const char *root;
@@ -85,6 +91,9 @@ struct ow_fs {
     unsigned long long capacity;
     unsigned long long free;
     unsigned long long available;
+
+    unsigned long long read;
+    unsigned long long written;
 };
 
 /*

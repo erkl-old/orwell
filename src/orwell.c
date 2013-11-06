@@ -207,6 +207,45 @@ int ow_read_fsutil(struct ow_fs *fs) {
 }
 
 /*
+ * Updates the filesystem's `read` and `written` properties with figures
+ * from `/proc/diskstats`.
+ */
+int ow_read_fsio(struct ow_fs *fs, char *buf, size_t len) {
+    int ret = 0;
+
+    FILE *file = fopen("/proc/diskstats", "r");
+    if (file == NULL) {
+        return errno;
+    }
+
+    while ((ret = ow__readln(file, buf, len)) == 0) {
+        if (feof(file)) {
+            ret = ENODATA;
+            break;
+        }
+
+        /* each line includes the device's major and minor numbers -
+         * use these to identify the filesystem we're looking for */
+        unsigned int maj, min;
+        unsigned long long rs, ws;
+
+        sscanf(buf, " %u %u %*s %*u %*u %llu %*u %*u %*u %llu",
+               &maj, &min, &rs, &ws);
+
+        if (maj == major(fs->device) && min == minor(fs->device)) {
+            /* read and write statistics are measured in number of
+             * 512-byte sectors read */
+            fs->read    = rs * 512;
+            fs->written = ws * 512;
+            break;
+        }
+    }
+
+    fclose(file);
+    return ret;
+}
+
+/*
  * Updates the preallocated `ow_netif` array stored in `list->base` with
  * data from `/proc/net/dev`.
  */
