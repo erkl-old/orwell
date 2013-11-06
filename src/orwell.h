@@ -4,12 +4,74 @@
 #include <net/if.h>
 
 /*
- * Placeholder struct definitions.
+ * Utilization statistics for a single CPU core.
  */
-struct ow_core;
-struct ow_memory;
-struct ow_fs;
-struct ow_netif;
+struct ow_core {
+    unsigned long long total;
+    unsigned long long user;
+    unsigned long long nice;
+    unsigned long long system;
+    unsigned long long idle;
+    unsigned long long iowait;
+    unsigned long long irq;
+    unsigned long long softirq;
+    unsigned long long steal;
+    unsigned long long virt;
+};
+
+/*
+ * Memory usage statistics.
+ */
+struct ow_memory {
+    unsigned long long ram_total;
+    unsigned long long ram_free;
+    unsigned long long ram_shared;
+    unsigned long long ram_buffer;
+    unsigned long long swap_total;
+    unsigned long long swap_free;
+};
+
+/*
+ * Filesystem information, including current utilization levels and counters
+ * for the total number of bytes read from and written to the device.
+ */
+struct ow_fs {
+    dev_t device;
+    const char *root;
+    const char *type;
+
+    unsigned long long capacity;
+    unsigned long long free;
+    unsigned long long available;
+
+    unsigned long long read;
+    unsigned long long written;
+};
+
+/*
+ * Network interface metrics.
+ */
+struct ow_netif {
+    char name[IF_NAMESIZE];
+
+    unsigned long long recv_bytes;
+    unsigned long long recv_packets;
+    unsigned long long recv_errs;
+    unsigned long long recv_drop;
+    unsigned long long recv_fifo;
+    unsigned long long recv_frame;
+    unsigned long long recv_compressed;
+    unsigned long long recv_multicast;
+
+    unsigned long long trans_bytes;
+    unsigned long long trans_packets;
+    unsigned long long trans_errs;
+    unsigned long long trans_drop;
+    unsigned long long trans_fifo;
+    unsigned long long trans_colls;
+    unsigned long long trans_carrier;
+    unsigned long long trans_compressed;
+};
 
 /*
  * Generic list struct, describing the array at `base`; `len` holds the number
@@ -37,33 +99,11 @@ struct ow_list {
  */
 int ow_read_cores(struct ow_list *list, char *buf, size_t len);
 
-struct ow_core {
-    unsigned long long total;
-    unsigned long long user;
-    unsigned long long nice;
-    unsigned long long system;
-    unsigned long long idle;
-    unsigned long long iowait;
-    unsigned long long irq;
-    unsigned long long softirq;
-    unsigned long long steal;
-    unsigned long long virt;
-};
-
 /*
  * Snapshots current memory usage statistics using the `sysinfo(2)`
  * system call.
  */
 int ow_read_memory(struct ow_memory *mem);
-
-struct ow_memory {
-    unsigned long long ram_total;
-    unsigned long long ram_free;
-    unsigned long long ram_shared;
-    unsigned long long ram_buffer;
-    unsigned long long swap_total;
-    unsigned long long swap_free;
-};
 
 /*
  * Populates `list->base` with an `ow_fs` entry for each known mounted,
@@ -84,19 +124,6 @@ int ow_read_fsutil(struct ow_fs *fs);
  */
 int ow_read_fsio(struct ow_fs *fs, char *buf, size_t len);
 
-struct ow_fs {
-    dev_t device;
-    const char *root;
-    const char *type;
-
-    unsigned long long capacity;
-    unsigned long long free;
-    unsigned long long available;
-
-    unsigned long long read;
-    unsigned long long written;
-};
-
 /*
  * Copies usage stats for up to `list->cap` network interfaces into the
  * preallocated `ow_netif` array at `list->base`, using the data available in
@@ -108,27 +135,5 @@ struct ow_fs {
  * is too small to hold each line in `/proc/net/dev`.
  */
 int ow_read_netifs(struct ow_list *list, char *buf, size_t len);
-
-struct ow_netif {
-    char name[IF_NAMESIZE];
-
-    unsigned long long recv_bytes;
-    unsigned long long recv_packets;
-    unsigned long long recv_errs;
-    unsigned long long recv_drop;
-    unsigned long long recv_fifo;
-    unsigned long long recv_frame;
-    unsigned long long recv_compressed;
-    unsigned long long recv_multicast;
-
-    unsigned long long trans_bytes;
-    unsigned long long trans_packets;
-    unsigned long long trans_errs;
-    unsigned long long trans_drop;
-    unsigned long long trans_fifo;
-    unsigned long long trans_colls;
-    unsigned long long trans_carrier;
-    unsigned long long trans_compressed;
-};
 
 #endif
