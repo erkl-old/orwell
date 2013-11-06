@@ -1,0 +1,6 @@
+orwell is a small C library of Linux system monitoring primitives. It
+provides a unified interface for measuring CPU, memory, filesystem and
+network utilization, using a combination of procfs files and system
+calls behind the scenes.
+
+Linux kernel versions 2.6 and above are officially supported.
