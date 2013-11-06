@@ -8,11 +8,13 @@
 #include <sys/vfs.h>
 
 #include "orwell.h"
-#include "orwell-util.h"
 
 /*
  * Static function prototypes.
  */
+static int ow__gets(FILE *file, char *buf, size_t len);
+static int ow__strarr_push(char **tail, size_t *cap, const char *src);
+static const char *ow__strarr_find(const char *head, const char *tail, const char *needle);
 static int ow__read_physfs(char **buf, size_t *len);
 static int ow__read_fsutil(struct ow_fs *fs);
 static int ow__read_fsio(struct ow_fs *mount, char *buf, size_t len);
@@ -48,7 +50,7 @@ int ow_read_cores(struct ow_core *dst, int cap, char *buf, size_t len) {
         return -errno;
     }
 
-    while (n < cap && (r = ow__readln(f, buf, len)) == 0 && !feof(f)) {
+    while (n < cap && (r = ow__gets(f, buf, len)) == 0 && !feof(f)) {
         /* while `proc/stat` contains all kinds of stats, we're only interested
          * in lines beginning with "cpu" and a decimal digit */
         if (strlen(buf) < 4 || buf[0] != 'c' || buf[1] != 'p' ||
@@ -101,7 +103,7 @@ int ow_read_mounts(struct ow_fs *dst, int cap, char *buf, size_t len) {
     while (n < cap && getmntent_r(f, &mnt, buf, len) != NULL) {
         /* ignore entries for filesystem types which aren't associated
          * with any physical device */
-        const char *type = ow__strfind(head, tail, mnt.mnt_type);
+        const char *type = ow__strarr_find(head, tail, mnt.mnt_type);
         if (type == NULL) {
             continue;
         }
@@ -152,7 +154,7 @@ int ow_read_netifs(struct ow_netif *dst, int cap, char *buf, size_t len) {
         return errno;
     }
 
-    while (n < cap && (r = ow__readln(file, buf, len)) == 0 && !feof(file)) {
+    while (n < cap && (r = ow__gets(file, buf, len)) == 0 && !feof(file)) {
         /* the first two rows contain no useful data; only
          * table headers */
         if (lines++ < 2) {
@@ -183,6 +185,63 @@ int ow_read_netifs(struct ow_netif *dst, int cap, char *buf, size_t len) {
 /*
  * Static functions.
  */
+static int ow__gets(FILE *file, char *buf, size_t len) {
+    int i;
+
+    if (fgets(buf, len, file) == NULL) {
+        return errno;
+    }
+
+    for (i = 0; ; i++) {
+        if (i >= len - 1) {
+            return EOVERFLOW;
+        }
+        if (buf[i] == '\n') {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+static int ow__strarr_push(char **tail, size_t *cap, const char *src) {
+    size_t i = 0;
+    unsigned char c;
+
+    do {
+        if (i >= *cap) {
+            return EOVERFLOW;
+        }
+
+        c = src[i];
+        (*tail)[i++] = c;
+    } while (c != '\0');
+
+    *tail += i;
+    *cap -= i;
+
+    return 0;
+}
+
+static const char *ow__strarr_find(const char *head, const char *tail, const char *needle) {
+    size_t i;
+
+    for (; head < tail; head += i) {
+        for (i = 0; ; i++) {
+            if (head[i] != needle[i]) {
+                while (head[i++] != '\0');
+                break;
+            }
+
+            if (needle[i] == '\0') {
+                return head;
+            }
+        }
+    }
+
+    return NULL;
+}
+
 static int ow__read_physfs(char **buf, size_t *len) {
     int r = 0;
 
@@ -191,7 +250,7 @@ static int ow__read_physfs(char **buf, size_t *len) {
         return -errno;
     }
 
-    while ((r = ow__readln(f, *buf, *len)) == 0 && !feof(f)) {
+    while ((r = ow__gets(f, *buf, *len)) == 0 && !feof(f)) {
         if ((*buf)[0] == '\t') {
             /* the lines that make it through look something like this:
              * "\text4\n\0", but we're not interested in the leading tab or
@@ -201,7 +260,7 @@ static int ow__read_physfs(char **buf, size_t *len) {
 
             /* add this filesystem type to array; abort if there's not
              * enough room */
-            r = ow__strpush(buf, len, *buf+1);
+            r = ow__strarr_push(buf, len, *buf+1);
             if (r != 0) break;
         }
     }
@@ -235,7 +294,7 @@ static int ow__read_fsio(struct ow_fs *mount, char *buf, size_t len) {
         return errno;
     }
 
-    while ((r = ow__readln(f, buf, len)) == 0) {
+    while ((r = ow__gets(f, buf, len)) == 0) {
         if (feof(f)) {
             r = ENODATA;
             break;

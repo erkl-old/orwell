@@ -2,17 +2,11 @@ AR = ar
 CC = gcc
 CFLAGS = -O2 -Wall
 
-HEADERS = src/orwell.h                \
-          src/orwell-util.h
-
-OBJS = src/orwell.o                   \
-       src/orwell-util.o
-
-orwell.a: $(OBJS)
+orwell.a: src/orwell.o
 	@printf "  AR    $@\n"
-	@$(AR) crs $@ $(OBJS)
+	@$(AR) crs $@ src/orwell.o
 
-src/%.o: src/%.c $(HEADERS)
+src/%.o: src/%.c src/orwell.h
 	@printf "  CC    $@\n"
 	@$(CC) $(CFLAGS) -c -o $@ $<
 
