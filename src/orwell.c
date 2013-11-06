@@ -13,18 +13,15 @@
 /*
  * Updates `ow_core` entries in `list` with data from `/proc/stat`.
  */
-int ow_read_cores(struct ow_list *list, char *buf, size_t len) {
-    int ret = 0;
+int ow_read_cores(struct ow_core *dst, int cap, char *buf, size_t len) {
+    int n = 0, r = 0;
 
-    /* always reset the list's length */
-    list->len = 0;
-
-    FILE *file = fopen("/proc/stat", "r");
-    if (file == NULL) {
-        return errno;
+    FILE *f = fopen("/proc/stat", "r");
+    if (f == NULL) {
+        return -errno;
     }
 
-    while ((ret = ow__readln(file, buf, len)) == 0 && !feof(file)) {
+    while (n < cap && (r = ow__readln(f, buf, len)) == 0 && !feof(f)) {
         /* while `proc/stat` contains all kinds of stats, we're only interested
          * in lines beginning with "cpu" and a decimal digit */
         if (strlen(buf) < 4 || buf[0] != 'c' || buf[1] != 'p' ||
@@ -32,13 +29,8 @@ int ow_read_cores(struct ow_list *list, char *buf, size_t len) {
             continue;
         }
 
-        if (list->len >= list->cap) {
-            ret = EOVERFLOW;
-            break;
-        }
-
         /* append the core to the list */
-        struct ow_core *core = &((struct ow_core *) list->base)[list->len++];
+        struct ow_core *core = &dst[n++];
 
         /* different kernel versions will include different numbers of fields,
          * but luckily `sscanf` will set all missing fields to 0 for us */
@@ -52,8 +44,8 @@ int ow_read_cores(struct ow_list *list, char *buf, size_t len) {
                       core->softirq + core->steal + core->virt;
     }
 
-    fclose(file);
-    return ret;
+    fclose(f);
+    return r != 0 ? -r : n;
 }
 
 /*
@@ -63,7 +55,7 @@ int ow_read_memory(struct ow_memory *mem) {
     struct sysinfo info;
     int r = sysinfo(&info);
     if (r != 0) {
-        return errno;
+        return -errno;
     }
 
     /* convert each measurement to bytes */
@@ -84,23 +76,20 @@ int ow_read_memory(struct ow_memory *mem) {
  * physical filesystem identified. Filesystems are listed as they appear in
  * `/proc/mounts`.
  */
-int ow_read_mounts(struct ow_list *list, char *buf, size_t len) {
-    int ret = 0;
-
-    /* update the list's length before doing anything else */
-    list->len = 0;
+int ow_read_mounts(struct ow_fs *dst, int cap, char *buf, size_t len) {
+    int n = 0, r = 0;
 
     /* keep a pointer to the beginning of the buffer */
     char *head = buf;
 
     /* our first order of business is to compile a list of filesystem
      * types associated with a physical, mounted device */
-    FILE *file = fopen("/proc/filesystems", "r");
-    if (file == NULL) {
-        return errno;
+    FILE *f = fopen("/proc/filesystems", "r");
+    if (f == NULL) {
+        return -errno;
     }
 
-    while ((ret = ow__readln(file, buf, len)) == 0 && !feof(file)) {
+    while ((r = ow__readln(f, buf, len)) == 0 && !feof(f)) {
         if (buf[0] == '\t') {
             /* the lines that make it through look something like this:
              * "\text4\n\0", but we're not interested in the leading tab or
@@ -110,16 +99,17 @@ int ow_read_mounts(struct ow_list *list, char *buf, size_t len) {
 
             /* add this filesystem type to array; abort if there's not
              * enough room */
-            if ((ret = ow__strpush(&buf, &len, buf+1)) != 0) {
+            r = ow__strpush(&buf, &len, buf+1);
+            if (r != 0) {
                 break;
             }
         }
     }
 
-    fclose(file);
+    fclose(f);
 
-    if (ret != 0) {
-        return ret;
+    if (r != 0) {
+        return -r;
     }
 
     /* mark the end of our embedded string array */
@@ -127,19 +117,14 @@ int ow_read_mounts(struct ow_list *list, char *buf, size_t len) {
 
     /* now we work our way through `/proc/mounts`, cross-referencing each
      * entry's filesystem type with the embedded array we just compiled */
-    file = setmntent("/proc/mounts", "r");
-    if (file == NULL) {
-        return errno;
+    f = setmntent("/proc/mounts", "r");
+    if (f == NULL) {
+        return -errno;
     }
 
     struct mntent mnt;
 
-    while (getmntent_r(file, &mnt, buf, len) != NULL) {
-        if (list->len >= list->cap) {
-            ret = EOVERFLOW;
-            break;
-        }
-
+    while (n < cap && getmntent_r(f, &mnt, buf, len) != NULL) {
         /* ignore entries for filesystem types which aren't associated
          * with any physical device */
         const char *type = ow__strfind(head, tail, mnt.mnt_type);
@@ -148,18 +133,18 @@ int ow_read_mounts(struct ow_list *list, char *buf, size_t len) {
         }
 
         /* move `mnt.mnt_dir` to the start of the buffer */
-        size_t n = strlen(mnt.mnt_dir) + 1;
-        memcpy(buf, mnt.mnt_dir, n);
+        size_t num = strlen(mnt.mnt_dir) + 1;
+        memcpy(buf, mnt.mnt_dir, num);
 
         /* use `stat(2)` to detect the device's major and minor numbers */
         struct stat st;
         if (stat(buf, &st) != 0) {
-            ret = errno;
+            r = errno;
             break;
         }
 
         /* append this filesystem to the list */
-        struct ow_fs *fs = &((struct ow_fs *) list->base)[list->len++];
+        struct ow_fs *fs = &dst[n++];
 
         fs->device    = st.st_dev;
         fs->root      = buf;
@@ -173,16 +158,16 @@ int ow_read_mounts(struct ow_list *list, char *buf, size_t len) {
         /* advance our buffer pointer so that subsequent calls to `getmntent_r`
          * won't overwrite the last entry's `root` property, which we keep in
          * the user-provided buffer */
-        buf += n;
-        len -= n;
+        buf += num;
+        len -= num;
     }
 
-    if (ferror(file)) {
-        return errno;
+    if (ferror(f)) {
+        r = errno;
     }
 
-    endmntent(file);
-    return ret;
+    endmntent(f);
+    return r != 0 ? -r : n;
 }
 
 /*
@@ -211,16 +196,16 @@ int ow_read_fsutil(struct ow_fs *fs) {
  * from `/proc/diskstats`.
  */
 int ow_read_fsio(struct ow_fs *fs, char *buf, size_t len) {
-    int ret = 0;
+    int n = 0, r = 0;
 
-    FILE *file = fopen("/proc/diskstats", "r");
-    if (file == NULL) {
-        return errno;
+    FILE *f = fopen("/proc/diskstats", "r");
+    if (f == NULL) {
+        return -errno;
     }
 
-    while ((ret = ow__readln(file, buf, len)) == 0) {
-        if (feof(file)) {
-            ret = ENODATA;
+    while ((r = ow__readln(f, buf, len)) == 0) {
+        if (feof(f)) {
+            r = ENODATA;
             break;
         }
 
@@ -241,42 +226,33 @@ int ow_read_fsio(struct ow_fs *fs, char *buf, size_t len) {
         }
     }
 
-    fclose(file);
-    return ret;
+    fclose(f);
+    return r != 0 ? -r : n;
 }
 
 /*
  * Updates the preallocated `ow_netif` array stored in `list->base` with
  * data from `/proc/net/dev`.
  */
-int ow_read_netifs(struct ow_list *list, char *buf, size_t len) {
-    int ret = 0;
-
-    /* the list's `len` property should always be zeroed */
-    list->len = 0;
+int ow_read_netifs(struct ow_netif *dst, int cap, char *buf, size_t len) {
+    int n = 0, r = 0;
+    int lines = 0;
 
     FILE *file = fopen("/proc/net/dev", "r");
     if (file == NULL) {
         return errno;
     }
 
-    int n = 0;
-
-    while ((ret = ow__readln(file, buf, len)) == 0 && !feof(file)) {
+    while (n < cap && (r = ow__readln(file, buf, len)) == 0 && !feof(file)) {
         /* the first two rows contain no useful data; only
          * table headers */
-        if (n++ < 2) {
+        if (lines++ < 2) {
             continue;
-        }
-
-        if (list->len >= list->cap) {
-            ret = EOVERFLOW;
-            break;
         }
 
         /* create a new network interface entry (luckily `sscanf` does all the
          * heavy lifting for us) */
-        struct ow_netif *iface = &((struct ow_netif *) list->base)[list->len++];
+        struct ow_netif *iface = &dst[n++];
 
         sscanf(buf, " %[^:]: %llu %llu %llu %llu %llu %llu %llu %llu"
                            " %llu %llu %llu %llu %llu %llu %llu %llu",
@@ -292,5 +268,5 @@ int ow_read_netifs(struct ow_list *list, char *buf, size_t len) {
     }
 
     fclose(file);
-    return ret;
+    return r != 0 ? -r : n;
 }

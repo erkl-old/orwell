@@ -74,16 +74,6 @@ struct ow_netif {
 };
 
 /*
- * Generic list struct, describing the array at `base`; `len` holds the number
- * of elements currently in the array, and `cap` the array's total capacity.
- */
-struct ow_list {
-    void *base;
-    int len;
-    int cap;
-};
-
-/*
  * Reads usage statistics for all cores (measured in jiffies) from
  * `/proc/stat`. The result is stored in the preallocated `ow_core` array
  * at `list->base`, and `list->len` property will be updated to reflect
@@ -97,7 +87,7 @@ struct ow_list {
  * Additionally, `ow_read_cores` will return EOVERFLOW if any line in
  * `/proc/stat` is too long to fit into `buf`.
  */
-int ow_read_cores(struct ow_list *list, char *buf, size_t len);
+int ow_read_cores(struct ow_core *dst, int cap, char *buf, size_t len);
 
 /*
  * Snapshots current memory usage statistics using the `sysinfo(2)`
@@ -110,7 +100,7 @@ int ow_read_memory(struct ow_memory *mem);
  * physical filesystem, up to a maximum of `list->cap` filesystems. Updates
  * `list->len` to reflect the number of filesystems found.
  */
-int ow_read_mounts(struct ow_list *list, char *buf, size_t len);
+int ow_read_mounts(struct ow_fs *dst, int cap, char *buf, size_t len);
 
 /*
  * Updates the utilization fields of the provided `ow_fs` struct, using the
@@ -134,6 +124,6 @@ int ow_read_fsio(struct ow_fs *fs, char *buf, size_t len);
  * EOVERFLOW if more than `list->cap` interfaces were found, or if `buf`
  * is too small to hold each line in `/proc/net/dev`.
  */
-int ow_read_netifs(struct ow_list *list, char *buf, size_t len);
+int ow_read_netifs(struct ow_netif *dst, int cap, char *buf, size_t len);
 
 #endif
