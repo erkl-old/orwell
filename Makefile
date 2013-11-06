@@ -2,6 +2,8 @@ AR = ar
 CC = gcc
 CFLAGS = -O2 -Wall
 
+build: orwell.a
+
 orwell.a: src/orwell.o
 	@printf "  AR    $@\n"
 	@$(AR) crs $@ src/orwell.o
