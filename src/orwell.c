@@ -22,7 +22,7 @@ static int ow__read_fsio(struct ow_fs *mount, char *buf, size_t len);
 /*
  * API functions.
  */
-int ow_read_memory(struct ow_memory *mem) {
+int ow_read_memory(struct ow_memory *mem, char *buf, size_t len) {
     struct sysinfo info;
     int r = sysinfo(&info);
     if (r != 0) {
@@ -33,13 +33,35 @@ int ow_read_memory(struct ow_memory *mem) {
     unsigned long long unit = (unsigned long long) info.mem_unit;
 
     mem->ram_total  = unit * ((unsigned long long) info.totalram);
+    mem->ram_used   = unit * ((unsigned long long) info.totalram -
+        info.freeram - info.sharedram - info.bufferram);
     mem->ram_free   = unit * ((unsigned long long) info.freeram);
     mem->ram_shared = unit * ((unsigned long long) info.sharedram);
     mem->ram_buffer = unit * ((unsigned long long) info.bufferram);
+
     mem->swap_total = unit * ((unsigned long long) info.totalswap);
     mem->swap_free  = unit * ((unsigned long long) info.freeswap);
 
-    return 0;
+    /* fetch metrics for paging and swapping */
+    FILE *f = fopen("/proc/vmstat", "r");
+    if (f == NULL) {
+        return -errno;
+    }
+
+    while ((r = ow__gets(f, buf, len)) == 0 && !feof(f)) {
+        if (memcmp(buf, "pgfault ", 8) == 0) {
+            sscanf(buf, "%*s %llu", &mem->page_faults);
+        } else if (memcmp(buf, "pgmajfault ", 11) == 0) {
+            sscanf(buf, "%*s %llu", &mem->page_faults_major);
+        } else if (memcmp(buf, "pswpin ", 7) == 0) {
+            sscanf(buf, "%*s %llu", &mem->swap_ins);
+        } else if (memcmp(buf, "pswpout ", 8) == 0) {
+            sscanf(buf, "%*s %llu", &mem->swap_outs);
+        }
+    }
+
+    fclose(f);
+    return -r;
 }
 
 int ow_read_cores(struct ow_core *dst, int cap, char *buf, size_t len) {

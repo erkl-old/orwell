@@ -16,15 +16,21 @@ struct ow_netif;
  * Copies current memory utilization statistics to the provided struct.
  * Returns a negated error code on error.
  */
-int ow_read_memory(struct ow_memory *mem);
+int ow_read_memory(struct ow_memory *mem, char *buf, size_t len);
 
 struct ow_memory {
     unsigned long long ram_total;
+    unsigned long long ram_used;
     unsigned long long ram_free;
     unsigned long long ram_shared;
     unsigned long long ram_buffer;
     unsigned long long swap_total;
     unsigned long long swap_free;
+
+    unsigned long long page_faults;
+    unsigned long long page_faults_major;
+    unsigned long long swap_ins;
+    unsigned long long swap_outs;
 };
 
 /*
